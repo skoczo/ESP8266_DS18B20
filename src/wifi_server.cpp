@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include "wifi_server.hpp"
-#include "EEPROM.h"
 #include "ESP8266WiFi.h"
-// #include "ESP8266WebServer.h"
-#include "ESP8266WebServerSecure.h"
+#include "ESP8266WebServer.h"
+#include "eeprom/eeprom_data.hpp"
+// #include "ESP8266WebServerSecure.h"
 
 // The certificate is stored in PMEM
 static const uint8_t x509[] PROGMEM = {
@@ -69,12 +69,17 @@ static const uint8_t rsakey[] PROGMEM = {
   0x84, 0xea, 0x18, 0xee, 0x0d, 0x64, 0x63
 };
 
-ESP8266WebServerSecure webServerInstance;
+ESP8266WebServer webServerInstance;
 Temperature *tempInstance;
+extern EepromData *eeprom;
 
 String wifiConfigPage = "<html>"
 "<body>"
-"  Hello from body"
+"<form action=\"/set_wifi\" method=\"post\">"
+"SSID: <input type=\"text\" name=\"ssid\"><br>"
+"Password: <input type=\"password\" name=\"pass\"><br>"
+"<input type=\"submit\">"
+"</form>"
 "</body>"
 "</html>";
 
@@ -89,12 +94,33 @@ void handleTemp() {
     auto temp = tempInstance->getTemp((int)sensorIndex.toInt());
     webServerInstance.send(200, "text/plain", String(temp, DEC));
   } else {
-    webServerInstance.send(200, "text/plain", "Wrong index");
+    webServerInstance.send(400, "text/plain", "Wrong index");
+  }
+}
+
+void setWifi() {
+  Serial.println("setWifi uri: " + webServerInstance.uri());
+
+  auto ssid = webServerInstance.arg("ssid");
+  auto pass = webServerInstance.arg("pass");
+
+  Serial.println("ssid: " + ssid);
+  Serial.println("pass: " + pass);
+
+  String array[] = {"3", ssid, pass};
+  eeprom->write(3, array);
+
+  if(ssid.length() == 0 || pass.length() == 0) {
+    webServerInstance.send(400, "text/plain", "SSID or password empty");
+  } else {
+    webServerInstance.send(200, "text/plain", "Data saved. Rebooting....");
+    delay(100);
+    ESP.restart();
   }
 }
 
 void initWebServer(Temperature *t) {
-  webServerInstance.setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
+  // webServerInstance.setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
 
   tempInstance = t;
   Serial.println("initWebServer");
@@ -113,6 +139,8 @@ void initWebServer(Temperature *t) {
     Serial.println("Initializing url: " + url);
     webServerInstance.on(url, handleTemp);
   }
+
+  webServerInstance.on("/set_wifi", HTTP_POST, setWifi);
 
   webServerInstance.begin();
 }

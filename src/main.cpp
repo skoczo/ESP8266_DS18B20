@@ -13,6 +13,7 @@
 #include "EEPROM.h"
 
 #include "temperature.hpp"
+#include "eeprom/eeprom_data.hpp"
 
 
 #define ONE_WIRE_BUS 5
@@ -24,20 +25,64 @@
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 Temperature *temp;
+EepromData *eeprom;
 
-void setup()
-{
-  Serial.begin(9600);
+void setAP() {
   Serial.print("Setting soft-AP ... ");
   Serial.println(WiFi.softAP(WIFI_AP_NAME, WIFI_AP_PASS) ? "Ready" : "Failed!");
   Serial.print("Soft-AP IP address = ");
   Serial.println(WiFi.softAPIP());
+}
+
+void setup()
+{
+  Serial.begin(9600);
+
 
   delay(100);
 
+  eeprom = new EepromData();
+
+  // wifi data stored
+  if(eeprom->getSize() != -1) {
+    auto ssid = eeprom->getData()[0];
+    auto password = eeprom->getData()[1];
+
+    Serial.print("Wifi connection establishing. SSID: ");
+    Serial.print(ssid);
+    Serial.print(" password: ");
+    Serial.println(password);
+
+    WiFi.begin(ssid.c_str(), password.c_str());
+
+    Serial.print("Connecting");
+    int counter = 0;
+    while (WiFi.status() != WL_CONNECTED)
+    {
+      delay(500);
+      Serial.print(".");
+
+      if(counter > 20) {
+        WiFi.disconnect();
+        Serial.println("");
+        Serial.println("Connecting failed. Going to AP mode");
+        setAP();
+        break;
+      }
+
+      counter++;
+    }
+    Serial.println();
+
+    Serial.print("Connected, IP address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    setAP();
+  }
+  
   temp = new Temperature(&sensors);
   delay(1000);
-  initWebServer(temp);
+  initWebServer(temp);  
 
   Serial.println("Setup done");
 }
@@ -45,6 +90,8 @@ void setup()
 void loop()
 {
   handleClient();
+
+  // TODO: check wifi status
   
   // Serial.println("Before NON-blocking/async requestForConversion");
   // auto start = millis();       
