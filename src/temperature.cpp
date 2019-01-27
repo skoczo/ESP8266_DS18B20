@@ -9,7 +9,7 @@ Temperature::Temperature(DallasTemperature *sensors) {
 void Temperature::init()
 {
     this->deviceCount = sensors->getDeviceCount();
-    sensorAddresses = new uint8_t*[deviceCount];
+    sensorAddresses = new String[deviceCount];
     Serial.print("Found ");
     Serial.print(deviceCount, DEC);
     Serial.println(" devices.");
@@ -19,14 +19,15 @@ void Temperature::init()
         DeviceAddress t;
         sensors->getAddress(t, index);
         // sensorAddresses.push_back(std::move(t);
-        sensorAddresses[index] = new uint8_t[8];
-        std::copy(std::begin(t), std::end(t), sensorAddresses[index]);
+        // sensorAddresses[index] = new uint8_t[8];
+        sensorAddresses[index] = printAddress(t);
+        // std::copy(std::begin(t), std::end(t), sensorAddresses[index]);
     }
 
     for (auto index = 0; index < deviceCount; index++)
     {
         Serial.printf("%d: ", index);
-        printAddress(sensorAddresses[index]);
+        Serial.println(sensorAddresses[index]);
         Serial.println();
     }
 }
@@ -34,6 +35,10 @@ void Temperature::init()
 uint8_t Temperature::getDeviceCount() 
 {
     return this->deviceCount;
+}
+
+String Temperature::getSensorAddress(int index) {
+    return sensorAddresses[index];
 }
 
 float Temperature::getTemp(int index)
@@ -44,22 +49,21 @@ float Temperature::getTemp(int index)
     return sensors->getTempCByIndex(index);
 }
 
-float Temperature::getTemp(uint8_t address)
-{
-
-}
-
 DallasTemperature& Temperature::getSensors() 
 {
     return *sensors;
 }
 
-void Temperature::printAddress(const DeviceAddress deviceAddress)
+String Temperature::printAddress(const DeviceAddress deviceAddress)
 {
-  for (uint8_t i = 0; i < 8; i++)
-  {
-    // zero pad the address if necessary
-    if (deviceAddress[i] < 16) Serial.print("0");
-    Serial.print(deviceAddress[i], HEX);
-  }
+    String address_hex;
+    for (uint8_t i = 0; i < 8; i++)
+    {
+        // zero pad the address if necessary
+        if (deviceAddress[i] < 16) address_hex+='0';
+        // Serial.print(deviceAddress[i], HEX);
+        address_hex+=String(deviceAddress[i],HEX);
+    }
+
+    return address_hex;
 }

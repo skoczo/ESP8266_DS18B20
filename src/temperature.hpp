@@ -8,14 +8,14 @@ class Temperature {
     public:
         Temperature(DallasTemperature *sensors);
         float getTemp(int index);
-        float getTemp(uint8_t address);
         uint8_t getDeviceCount();
         DallasTemperature& getSensors();
-        void printAddress(const DeviceAddress deviceAddress);
+        String printAddress(const DeviceAddress deviceAddress);
+        String getSensorAddress(int index) ;
 
     private:
         DallasTemperature *sensors;
-        uint8_t** sensorAddresses; 
+        String* sensorAddresses; 
         uint8_t deviceCount;
         void init();
 
