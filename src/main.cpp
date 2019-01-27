@@ -44,7 +44,6 @@ void setup()
 {
   Serial.begin(9600);
 
-
   delay(100);
 
   eeprom = new EepromData();
@@ -96,45 +95,9 @@ void setup()
   Serial.println("Setup done");
 }
 
-String HOST_FINGERPRINT = "5F:F1:60:31:09:04:3E:F2:90:D2:B0:8A:50:38:04:E8:37:9F:BC:76";
 String MY_FINGERPRINT = "97:8F:83:88:42:0F:D3:CF:C5:14:F5:01:36:5E:34:91:89:7C:3C:A4";
-//const char* HOST = "iot.skoczo.pl";
-//uint16_t PORT = 8443;
-
-String HOST = "api.github.com";
 String MY_HOST = "iot.skoczo.pl";
 uint16_t PORT = 443;
-
-void cert_check() {
-  HTTPClient client;
-  if(!client.begin(MY_HOST, 443, "/temperatures", MY_FINGERPRINT)) {
-    Serial.println("Connection failed");
-  } else {
-    Serial.println("Connection success");
-  }
-
-  int http_code = client.GET();
-  if(http_code) {
-    Serial.print("http code: ");
-    Serial.println(http_code);
-    Serial.println("GET success");
-    Serial.print("Result: ");
-    Serial.println(client.getString());
-  } else {
-    Serial.println("GET fail");
-  }
-
-  client.end();
-    // Use WiFiClientSecure class to create TLS connection
-  // WiFiClientSecure client;
-  // Serial.print("connecting to ");
-  // Serial.println(ip);
-
-  // if (!client.connect(ip, PORT)) {
-  //   Serial.println("connection failed");
-  //   return;
-  // }
-}
 
 void loop()
 {
@@ -142,64 +105,54 @@ void loop()
 
   // TODO: check wifi status
   
-  // Serial.println("Before NON-blocking/async requestForConversion");
   auto start = millis();       
   sensors.setWaitForConversion(false);  // makes it async
   sensors.requestTemperatures();
   sensors.setWaitForConversion(true);
   auto stop = millis();
-  Serial.println("After NON-blocking/async requestForConversion");
-  Serial.print("Time used: ");
+  Serial.print("Temp calc time: ");
   Serial.println(stop - start); 
 
-  cert_check();
+  // cert_check();
 
-  // for (auto index = 0; index < temp->getDeviceCount(); index++)
-  // {
-  //   // get temperature
-  //   Serial.print("Temperature: ");
-  //   Serial.println(temp->getTemp(index));  
-  //   Serial.println("\n");
+  for (auto index = 0; index < temp->getDeviceCount(); index++)
+  {
+    // get temperature
+    Serial.print("Temperature: ");
+    Serial.println(temp->getTemp(index));  
+    Serial.println("\n");
 
-  //   if(WiFi.status() == WL_CONNECTED) {
-  //     Serial.println("Sending post req");
-  //     HTTPClient c;
+    if(WiFi.status() == WL_CONNECTED) {
+      Serial.println("Sending post req");
+      HTTPClient c;
 
-  //     if(c.begin("192.168.1.161", 8081, "/temperature", true, cert)) {
-  //       c.addHeader("Content-Type", "application/json");
+      if(c.begin(MY_HOST, 443, "/temperature", MY_FINGERPRINT)) {
+        c.addHeader("Content-Type", "application/json");
 
-  //       StaticJsonBuffer<300> JSONbuffer;
-  //       JsonObject& JSONencoder = JSONbuffer.createObject();
-  //       JSONencoder["value"] = temp->getTemp(index);
-  //       JSONencoder["sensorId"] = temp->getSensorAddress(index);
-  //       JSONencoder["deviceId"] = WiFi.macAddress();
-  //       String output;
-  //       JSONencoder.printTo(output);
+        StaticJsonBuffer<300> JSONbuffer;
+        JsonObject& JSONencoder = JSONbuffer.createObject();
+        JSONencoder["value"] = temp->getTemp(index);
+        JSONencoder["sensorId"] = temp->getSensorAddress(index);
+        JSONencoder["deviceId"] = WiFi.macAddress();
+        String output;
+        JSONencoder.printTo(output);
 
-  //       int result = c.POST(output);
+        int result = c.POST(output);
 
-  //       // int result = c.POST("{\"value\":" + String(temp->getTemp(index)) +
-  //       //   ",\"sensorId\":\"" + temp->getSensorAddress(index) +
-  //       //   "\",\"deviceId\": \""+ WiFi.macAddress() +"\"}");
-  //       if (result != HTTP_CODE_OK) {
-  //         Serial.print("POST error code: ");
-  //         Serial.println(result, DEC);
-  //       }      
-  //       // result = c.writeToStream(&Serial);
-  //       // Serial.print("writeToStream result: ");
-  //       // Serial.println(result, DEC);
-  //       c.end();
-  //     } else {
-  //       Serial.println("begin failed");
-  //     }
-  //   }
-  // }
+        if (result != HTTP_CODE_OK) {
+          Serial.print("POST error code: ");
+          Serial.println(result, DEC);
+        }      
+
+        c.end();
+      } else {
+        Serial.println("begin failed");
+      }
+    }
+  }
 
   delay(1000);
-  
 }
-
-
 
 void init_fs() {
    if(!SPIFFS.begin()) {
