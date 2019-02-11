@@ -2,17 +2,18 @@
 #include <ArduinoJson.h>
 #include "ESP8266WiFi.h"
 #include <ESP8266HTTPClient.h>
-
-String MY_FINGERPRINT = "97:8F:83:88:42:0F:D3:CF:C5:14:F5:01:36:5E:34:91:89:7C:3C:A4";
-String MY_HOST = "iot.skoczo.pl";
-uint16_t PORT = 443;
+#include "rest_settings.hpp"
 
 bool post_temp(float value, String sensorId) {
     if(WiFi.status() == WL_CONNECTED) {
       Serial.println("Sending post req");
       HTTPClient c;
 
-      if(c.begin(MY_HOST, 443, "/temperature", MY_FINGERPRINT)) {
+      #ifdef TLS
+        if(c.begin(MY_HOST, PORT, "/temperature", MY_FINGERPRINT)) {
+      #else
+        if(c.begin(MY_HOST, PORT, "/temperature")) {
+      #endif
         c.addHeader("Content-Type", "application/json");
 
         StaticJsonBuffer<300> JSONbuffer;
