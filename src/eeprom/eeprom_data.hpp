@@ -6,8 +6,7 @@
 class EepromData {
     public:
         EepromData();
-        void write(int size, String data[]);
-        void writeString(int address, const char* data);
+        void write(int size, String data[]);        
 
         int getSize();
         String* getData();
@@ -17,6 +16,7 @@ class EepromData {
         int size = -1;
 
         String readString(int index);
+        void writeString(int address, const char* data);
 };
 
 #endif

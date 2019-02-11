@@ -53,8 +53,6 @@ void setWifi() {
 }
 
 void initWebServer(Temperature *t) {
-  // webServerInstance.setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
-
   tempInstance = t;
   Serial.println("initWebServer");
 

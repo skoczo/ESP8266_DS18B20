@@ -18,10 +18,7 @@ void Temperature::init()
     {
         DeviceAddress t;
         sensors->getAddress(t, index);
-        // sensorAddresses.push_back(std::move(t);
-        // sensorAddresses[index] = new uint8_t[8];
         sensorAddresses[index] = printAddress(t);
-        // std::copy(std::begin(t), std::end(t), sensorAddresses[index]);
     }
 
     for (auto index = 0; index < deviceCount; index++)
@@ -61,7 +58,7 @@ String Temperature::printAddress(const DeviceAddress deviceAddress)
     {
         // zero pad the address if necessary
         if (deviceAddress[i] < 16) address_hex+='0';
-        // Serial.print(deviceAddress[i], HEX);
+
         address_hex+=String(deviceAddress[i],HEX);
     }
 

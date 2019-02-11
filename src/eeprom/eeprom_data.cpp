@@ -15,10 +15,7 @@ EepromData::EepromData() {
         num+= (char)c;
     }
 
-    Serial.println("'\nEND READING");
-
-    Serial.println("");
-
+    Serial.println("'\nEND READING\n");
     Serial.println("Readed num: '" + num + "'.");
 
     data = new String[2];
@@ -32,7 +29,7 @@ EepromData::EepromData() {
 
         Serial.println("Data in EEPROM");
         Serial.println("SSID: " + ssid);
-        Serial.println("Password: " + pass);
+        Serial.println("Password: " + (pass != NULL && pass.length()>0 ? true : false));
 
         size = 2;
         data[0] = ssid;
@@ -63,16 +60,11 @@ void EepromData::writeString(int address, const char* data) {
         if(!EEPROM.commit()) {
             Serial.println("Commit fail");
         }
-        Serial.print("Wrote ");
-        Serial.print(data[i]);
-        Serial.print(" read ");
-        Serial.println((char)EEPROM.read(address + i));
     }
 }
 
 
 boolean eeprom_write_bytes(int startAddr, const byte* array, int numBytes) {
-    // counter
     int i;
     for (i = 0; i < numBytes; i++) {
         EEPROM.write(startAddr + i, array[i]);
