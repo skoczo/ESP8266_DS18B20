@@ -47,7 +47,7 @@ void setup()
 
     Serial.print("Connecting");
     int counter = 0;
-    while (WiFi.status() != WL_CONNECTED)
+    while (!WiFi.isConnected())
     {
       delay(500);
       Serial.print(".");
@@ -59,7 +59,7 @@ void setup()
       counter++;
     }
 
-    if(WiFi.status() == WL_CONNECTED) {
+    if(WiFi.isConnected()) {
       Serial.print("Connected, IP address: ");
       Serial.println(WiFi.localIP());
     } else {
@@ -84,19 +84,19 @@ void setup()
 
 void loop()
 {
-  if(WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED) {
+  if(WiFi.getMode() == WIFI_STA && !WiFi.isConnected()) {
     eeprom = new EepromData();
 
     // wifi data stored
     if(eeprom->getSize() != -1) {
       auto ssid = eeprom->getData()[0];
       auto password = eeprom->getData()[1];
-
+      WiFi.disconnect();
       WiFi.begin(ssid.c_str(), password.c_str());
 
       Serial.print("Reconnecting");
       int counter = 0;
-      while (WiFi.status() != WL_CONNECTED)
+      while (!WiFi.isConnected())
       {
         delay(500);
         Serial.print(".");
