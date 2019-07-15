@@ -3,6 +3,6 @@
 
 #include <Arduino.h>
 
-bool post_temp(float value, String sensorId);
+bool post_temp(float value, String sensorId, bool retry);
 
 #endif

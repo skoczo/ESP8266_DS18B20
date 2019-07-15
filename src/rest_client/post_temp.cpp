@@ -1,20 +1,32 @@
 #include "post_temp.hpp"
 #include <ArduinoJson.h>
 #include "ESP8266WiFi.h"
-#include <ESP8266HTTPClient.h>
+// #include <ESP8266HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include "rest_settings.hpp"
 
-bool post_temp(float value, String sensorId) {
+bool post_temp(float value, String sensorId, bool retry) {
+    // TODO: ignore if 85. This is wrong val
+
     if(WiFi.status() == WL_CONNECTED) {
       Serial.println("Sending post req");
-      HTTPClient c;
+      // HTTPClient c;
+      WiFiClientSecure c;
+      c.setInsecure();
 
-      #ifdef TLS
-        if(c.begin(MY_HOST, PORT, "/temperature", MY_FINGERPRINT)) {
-      #else
-        if(c.begin(MY_HOST, PORT, "/temperature")) {
-      #endif
-        c.addHeader("Content-Type", "application/json");
+      int connected = c.connect("iot.skoczo.pl", 443);
+      if(connected && retry) {
+        c.print("POST ");
+        c.print("/iot/temperature");
+        c.println(" HTTP/1.1");
+        c.print("Host: ");
+        c.println(MY_HOST);
+        c.println("User-Agent: raleik.pl/homeiot");
+        c.print("Authorization: Bearer ");
+        c.println(iotToken);
+        c.println("Connection: close");
+        c.println("Content-Type: application/json");
+        c.print("Content-Length: ");
 
         StaticJsonBuffer<300> JSONbuffer;
         JsonObject& JSONencoder = JSONbuffer.createObject();
@@ -24,18 +36,21 @@ bool post_temp(float value, String sensorId) {
         String output;
         JSONencoder.printTo(output);
 
-        int result = c.POST(output);
+        c.println(output.length());
+        c.println("");
+        c.println(output);
 
-        if (result != HTTP_CODE_OK) {
-          Serial.print("POST error code: ");
-          Serial.println(result, DEC);
-        }      
-
-        c.end();
+        Serial.println("request sent");
+        String line = c.readStringUntil('\r');
+        Serial.println(line);
+        c.stop();
 
         return true;
       } else {
-        Serial.println("begin failed");
+        Serial.println("connect failed");
+        if(retry) {
+          return post_temp(value, sensorId, false);
+        }
         return false;
       }
     } else {
