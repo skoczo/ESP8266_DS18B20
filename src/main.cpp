@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 
 #include "ESP8266WiFi.h"
+#include "ESP8266WiFiType.h"
 #include "wifi_server.hpp"
 
 #include "temperature.hpp"
@@ -83,9 +84,34 @@ void setup()
 
 void loop()
 {
-  handleClient();
+  if(WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED) {
+    eeprom = new EepromData();
 
-  // TODO: check wifi status
+    // wifi data stored
+    if(eeprom->getSize() != -1) {
+      auto ssid = eeprom->getData()[0];
+      auto password = eeprom->getData()[1];
+
+      WiFi.begin(ssid.c_str(), password.c_str());
+
+      Serial.print("Reconnecting");
+      int counter = 0;
+      while (WiFi.status() != WL_CONNECTED)
+      {
+        delay(500);
+        Serial.print(".");
+
+        if(counter > 20) {
+          break;
+        }
+
+        counter++;
+      }
+      return;
+    }
+  }
+
+  handleClient();
   
   auto start = millis();       
   sensors.setWaitForConversion(false);  // makes it async
@@ -104,8 +130,9 @@ void loop()
     Serial.println(temp->getTemp(index));  
     Serial.println("\n");
 
-    post_temp(temp->getTemp(index), temp->getSensorAddress(index));
+    post_temp(temp->getTemp(index), temp->getSensorAddress(index), true);
   }
 
-  delay(1000);
+  // wait 5 min
+  delay(1000 * 60 * 5);
 }
