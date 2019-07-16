@@ -7,7 +7,7 @@
 
 #define TLS true
 
-String iotToken = "f4246aa4-76ce-466d-81f3-1f8f6877c35f";
+String iotToken = put token here;
 
 #ifdef TLS
     String MY_FINGERPRINT = "A5:3C:27:EA:02:6F:DD:9D:85:20:F2:BF:6D:BC:68:EB:02:82:60:44";
