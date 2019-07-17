@@ -2,7 +2,7 @@
 #include "EEPROM.h"
 
 EepromData::EepromData() {
-    EEPROM.begin(4096);
+    EEPROM.begin(200);
 
     String num = "";
     uint8_t c;
@@ -18,8 +18,8 @@ EepromData::EepromData() {
     Serial.println("'\nEND READING\n");
     Serial.println("Readed num: '" + num + "'.");
 
-    data = new String[2];
-    if(num.equals("3")) {
+    data = new String[3];
+    if(num.equals("4")) {
         index++;
         String ssid = readString(index);
         index = index + ssid.length() +1;
@@ -27,28 +27,41 @@ EepromData::EepromData() {
         String pass = readString(index);
         index = index + pass.length()+1;
 
+        String iotToken = readString(index);
+        index = index + iotToken.length()+1;
+
         Serial.println("Data in EEPROM");
         Serial.println("SSID: " + ssid);
-        Serial.println("Password: " + (pass != NULL && pass.length()>0 ? true : false));
+        Serial.print("Password: ");
+        Serial.println(pass != NULL && pass.length()>0 ? true : false);
+        Serial.print("iotToken: ");
+        Serial.println(iotToken != NULL && iotToken.length()>0 ? true : false);
 
-        size = 2;
+        size = 3;
         data[0] = ssid;
         data[1] = pass;
+        data[2] = iotToken;
     } else {
         size = -1;
         Serial.println("No data in EEPROM");
     }
 }
 
-void EepromData::write(int size, String data[]) {
+bool EepromData::write(int size, String data[]) {
     int address = 0;
     for(int i=0; i<size; i++) {
-        writeString(address, data[i].c_str());
-        address+= data[i].length() + 1;
+        if(writeString(address, data[i].c_str())) {
+            address+= data[i].length() + 1;
+        } else {
+            clear();
+            return false;
+        }
     }
+
+    return true;
 }
 
-void EepromData::writeString(int address, const char* data) {
+bool EepromData::writeString(int address, const char* data) {
     int numBytes = strlen(data) + 1;
     Serial.print("Writing string:");
     Serial.println(data);
@@ -61,6 +74,8 @@ void EepromData::writeString(int address, const char* data) {
             Serial.println("Commit fail");
         }
     }
+
+    return true;
 }
 
 
@@ -82,6 +97,13 @@ String EepromData::readString(int index) {
     }
 
     return text;
+}
+
+void EepromData::clear() {
+    Serial.println("Clearing eeprom data");
+    for (unsigned int i = 0 ; i < EEPROM.length() ; i++) {
+        EEPROM.write(i, 0);
+    }
 }
 
 int EepromData::getSize() {

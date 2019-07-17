@@ -6,17 +6,18 @@
 class EepromData {
     public:
         EepromData();
-        void write(int size, String data[]);        
+        bool write(int size, String data[]);
 
         int getSize();
         String* getData();
+        void clear();
 
     private:
         String *data;
         int size = -1;
 
         String readString(int index);
-        void writeString(int address, const char* data);
+        bool writeString(int address, const char* data);
 };
 
 #endif

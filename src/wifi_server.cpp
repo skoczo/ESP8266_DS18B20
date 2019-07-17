@@ -13,6 +13,7 @@ String wifiConfigPage = "<html>"
 "<form action=\"/set_wifi\" method=\"post\">"
 "SSID: <input type=\"text\" name=\"ssid\"><br>"
 "Password: <input type=\"password\" name=\"pass\"><br>"
+"IOT token: <input type=\"text\" name=\"token\"><br>"
 "<input type=\"submit\" value=\"save\">"
 "</form></body></html>";
 
@@ -36,20 +37,25 @@ void setWifi() {
 
   auto ssid = webServerInstance.arg("ssid");
   auto pass = webServerInstance.arg("pass");
+  auto token = webServerInstance.arg("token");
 
   Serial.println("ssid: " + ssid);
   Serial.println("pass: " + pass);
+  Serial.println("token: " + token);
 
-  String array[] = {"3", ssid, pass};
-  eeprom->write(3, array);
-
-  if(ssid.length() == 0 || pass.length() == 0) {
+  if(ssid.length() == 0 || pass.length() == 0 || token.length() == 0) {
     webServerInstance.send(400, "text/plain", "SSID or password empty");
-  } else {
+    return;
+  }
+
+  String array[] = {"4", ssid, pass, token};
+  if(eeprom->write(4, array)) {
     webServerInstance.send(200, "text/plain", "Data saved. Rebooting....");
+  } else {
+    webServerInstance.send(500, "text/plain", "Error during data saving. Rebooting....");
+  }
     delay(100);
     ESP.restart();
-  }
 }
 
 void initWebServer(Temperature *t) {

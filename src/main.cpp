@@ -5,6 +5,8 @@
 #include "ESP8266WiFiType.h"
 #include "wifi_server.hpp"
 
+#include "Timer.h"
+
 #include "temperature.hpp"
 #include "eeprom/eeprom_data.hpp"
 #include "rest_client/post_temp.hpp"
@@ -14,11 +16,18 @@
 #define WIFI_AP_NAME "ESP_WIFI"
 #define WIFI_AP_PASS "password"
 
+bool connectToWifi();
+
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 Temperature *temp;
 EepromData *eeprom;
+Timer t;
+int8_t ledTimer = -1;
+String iotToken;
+
+int LED_PIN = 2;
 
 void setAP() {
   Serial.print("Setting soft-AP ... ");
@@ -31,38 +40,22 @@ void setup()
 {
   Serial.begin(9600);
 
-  delay(100);
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  delay(1000);
 
   eeprom = new EepromData();
 
   // wifi data stored
   if(eeprom->getSize() != -1) {
-    auto ssid = eeprom->getData()[0];
-    auto password = eeprom->getData()[1];
-
-    Serial.print("Wifi connection establishing. SSID: ");
-    Serial.println(ssid);
-
-    WiFi.begin(ssid.c_str(), password.c_str());
-
-    Serial.print("Connecting");
-    int counter = 0;
-    while (!WiFi.isConnected())
-    {
-      delay(500);
-      Serial.print(".");
-
-      if(counter > 20) {
-        break;
-      }
-
-      counter++;
-    }
+    connectToWifi();
 
     if(WiFi.isConnected()) {
+      ledTimer = t.oscillate(LED_BUILTIN, 2000, HIGH);
       Serial.print("Connected, IP address: ");
       Serial.println(WiFi.localIP());
     } else {
+      ledTimer = t.oscillate(LED_BUILTIN, 100, HIGH);
       WiFi.disconnect();
       Serial.println("");
       Serial.println("Connecting failed. Switching to AP mode");
@@ -70,6 +63,7 @@ void setup()
     }
     Serial.println();
   } else {
+    digitalWrite(LED_BUILTIN, LOW);
     setAP();
   }
   
@@ -78,28 +72,28 @@ void setup()
   initWebServer(temp);  
 
   Serial.println("Setup done");
+  t.every(100, handleClient);
 }
 
-
-
-void loop()
-{
-  if(WiFi.getMode() == WIFI_STA && !WiFi.isConnected()) {
-    eeprom = new EepromData();
-
-    // wifi data stored
+bool connectToWifi() {
+  // wifi data stored
     if(eeprom->getSize() != -1) {
       auto ssid = eeprom->getData()[0];
       auto password = eeprom->getData()[1];
+      iotToken = eeprom->getData()[2];
+      WiFi.softAPdisconnect(true);
       WiFi.disconnect();
       WiFi.begin(ssid.c_str(), password.c_str());
 
-      Serial.print("Reconnecting");
+      Serial.print("wifi connecting");
       int counter = 0;
       while (!WiFi.isConnected())
       {
-        delay(500);
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(250);
         Serial.print(".");
+        digitalWrite(LED_BUILTIN, LOW);
+        delay(250);
 
         if(counter > 20) {
           break;
@@ -107,32 +101,64 @@ void loop()
 
         counter++;
       }
-      return;
+      Serial.println("");
+      return WiFi.isConnected();
+    }
+
+    return false;
+}
+
+
+void loop()
+{
+  t.update();
+
+  if(WiFi.getMode() != WIFI_AP && !WiFi.isConnected()) {
+    if(connectToWifi()) {
+      Serial.println("wifi connected");
+      t.stop(ledTimer);
+      ledTimer = t.oscillate(LED_BUILTIN, 2000, HIGH);
+    } else {
+      Serial.println("can't connect to wifi");
+      t.stop(ledTimer);
+      ledTimer = t.oscillate(LED_BUILTIN, 100, HIGH);
+      delay(1000);
     }
   }
 
-  handleClient();
-  
-  auto start = millis();       
-  sensors.setWaitForConversion(false);  // makes it async
-  sensors.requestTemperatures();
-  sensors.setWaitForConversion(true);
-  auto stop = millis();
-  Serial.print("Temp calc time: ");
-  Serial.println(stop - start); 
+  // auto start = millis();       
+  // sensors.setWaitForConversion(false);  // makes it async
+  // sensors.requestTemperatures();
+  // sensors.setWaitForConversion(true);
+  // auto stop = millis();
+  // Serial.print("Temp calc time: ");
+  // Serial.println(stop - start); 
 
   // cert_check();
+  if(WiFi.getMode() == WIFI_STA) {
+    if(temp->getDeviceCount() == 0 ) {
+      ESP.restart();
+    }
 
-  for (auto index = 0; index < temp->getDeviceCount(); index++)
-  {
-    // get temperature
-    Serial.print("Temperature: ");
-    Serial.println(temp->getTemp(index));  
-    Serial.println("\n");
+    for (auto index = 0; index < temp->getDeviceCount(); index++)
+    {
+      // get temperature
+      Serial.print("Temperature: ");
+      Serial.println(temp->getTemp(index));  
+      Serial.println("\n");
 
-    post_temp(temp->getTemp(index), temp->getSensorAddress(index), true);
+      if(temp->getTemp(index) == -127.0 || temp->getTemp(index) == 85.0) {
+        Serial.println("Bad temp. Restart temp measuring");
+        index--;
+      } else {
+        post_temp(temp->getTemp(index), temp->getSensorAddress(index), iotToken, true);
+      }
+
+    }
+    // wait 5 min
+    delay(1000 * 60 * 5);
+    // delay(1000);
+
   }
 
-  // wait 5 min
-  delay(1000 * 60 * 5);
 }

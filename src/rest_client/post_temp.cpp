@@ -5,7 +5,7 @@
 #include <WiFiClientSecure.h>
 #include "rest_settings.hpp"
 
-bool post_temp(float value, String sensorId, bool retry) {
+bool post_temp(float value, String sensorId, String iotToken, bool retry) {
     // TODO: ignore if 85. This is wrong val
 
     if(WiFi.status() == WL_CONNECTED) {
@@ -49,7 +49,7 @@ bool post_temp(float value, String sensorId, bool retry) {
       } else {
         Serial.println("connect failed");
         if(retry) {
-          return post_temp(value, sensorId, false);
+          return post_temp(value, sensorId, iotToken, false);
         }
         return false;
       }
