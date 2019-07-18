@@ -17,6 +17,9 @@
 #define WIFI_AP_PASS "password"
 
 bool connectToWifi();
+void checkWifi();
+void postTemp();
+void checkIfDevicesConected();
 
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 OneWire oneWire(ONE_WIRE_BUS);
@@ -71,8 +74,48 @@ void setup()
   delay(1000);
   initWebServer(temp);  
 
-  Serial.println("Setup done");
   t.every(100, handleClient);
+  t.every(1000, checkWifi);
+  t.every(1000, checkIfDevicesConected);
+  t.every(1000 * 60 * 5, postTemp);
+  // t.every(1000, postTemp);
+
+  Serial.println("Setup done");
+}
+
+void checkWifi() {
+  if(WiFi.getMode() != WIFI_AP && !WiFi.isConnected()) {
+    if(connectToWifi()) {
+      Serial.println("wifi connected");
+      t.stop(ledTimer);
+      ledTimer = t.oscillate(LED_BUILTIN, 2000, HIGH);
+    } else {
+      Serial.println("can't connect to wifi");
+      t.stop(ledTimer);
+      ledTimer = t.oscillate(LED_BUILTIN, 100, HIGH);
+      delay(1000);
+    }
+  }
+}
+
+void postTemp() {
+  sensors.setWaitForConversion(false);  // makes it async
+  sensors.requestTemperatures();
+  sensors.setWaitForConversion(true);
+
+  for (auto index = 0; index < temp->getDeviceCount(); index++)
+  {
+    // get temperature
+    Serial.print("Temperature: ");
+    Serial.println(temp->getTemp(index));  
+    Serial.println("\n");
+    if(temp->getTemp(index) == -127.0 || temp->getTemp(index) == 85.0) {
+      Serial.println("Bad temp. Restart temp measuring");
+      index--;
+    } else {
+      post_temp(temp->getTemp(index), temp->getSensorAddress(index), iotToken, true);
+    }
+  }
 }
 
 bool connectToWifi() {
@@ -108,57 +151,16 @@ bool connectToWifi() {
     return false;
 }
 
-
-void loop()
+void checkIfDevicesConected()
 {
-  t.update();
-
-  if(WiFi.getMode() != WIFI_AP && !WiFi.isConnected()) {
-    if(connectToWifi()) {
-      Serial.println("wifi connected");
-      t.stop(ledTimer);
-      ledTimer = t.oscillate(LED_BUILTIN, 2000, HIGH);
-    } else {
-      Serial.println("can't connect to wifi");
-      t.stop(ledTimer);
-      ledTimer = t.oscillate(LED_BUILTIN, 100, HIGH);
-      delay(1000);
-    }
-  }
-
-  // auto start = millis();       
-  // sensors.setWaitForConversion(false);  // makes it async
-  // sensors.requestTemperatures();
-  // sensors.setWaitForConversion(true);
-  // auto stop = millis();
-  // Serial.print("Temp calc time: ");
-  // Serial.println(stop - start); 
-
-  // cert_check();
   if(WiFi.getMode() == WIFI_STA) {
     if(temp->getDeviceCount() == 0 ) {
       ESP.restart();
     }
-
-    for (auto index = 0; index < temp->getDeviceCount(); index++)
-    {
-      // get temperature
-      Serial.print("Temperature: ");
-      Serial.println(temp->getTemp(index));  
-      Serial.println("\n");
-
-      if(temp->getTemp(index) == -127.0 || temp->getTemp(index) == 85.0) {
-        Serial.println("Bad temp. Restart temp measuring");
-        index--;
-      } else {
-        post_temp(temp->getTemp(index), temp->getSensorAddress(index), iotToken, true);
-      }
-
-    }
-    // wait 5 min
-    delay(1000 * 60 * 5);
-    // delay(1000);
-
   }
+}
 
+void loop()
+{
+  t.update();
 }

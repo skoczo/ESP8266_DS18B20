@@ -16,7 +16,6 @@ class Temperature {
     private:
         DallasTemperature *sensors;
         String* sensorAddresses; 
-        uint8_t deviceCount;
         void init();
 
 };

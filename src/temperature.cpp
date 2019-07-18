@@ -8,7 +8,7 @@ Temperature::Temperature(DallasTemperature *sensors) {
 
 void Temperature::init()
 {
-    this->deviceCount = sensors->getDeviceCount();
+    uint8_t deviceCount = sensors->getDeviceCount();
     sensorAddresses = new String[deviceCount];
     Serial.print("Found ");
     Serial.print(deviceCount, DEC);
@@ -31,7 +31,7 @@ void Temperature::init()
 
 uint8_t Temperature::getDeviceCount() 
 {
-    return this->deviceCount;
+    return sensors->getDeviceCount();
 }
 
 String Temperature::getSensorAddress(int index) {
@@ -40,9 +40,6 @@ String Temperature::getSensorAddress(int index) {
 
 float Temperature::getTemp(int index)
 {
-    sensors->setWaitForConversion(false);  // makes it async
-    sensors->requestTemperatures();
-    sensors->setWaitForConversion(true);
     return sensors->getTempCByIndex(index);
 }
 
